@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Принудительно отключаем статическую генерацию для API-роута
+export const dynamic = 'force-dynamic'
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const ALLOWED_USER_ID = process.env.TELEGRAM_ALLOWED_USER_ID
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Серверный Supabase клиент с правами Service Role для записи без браузерной сессии
-const supabaseAdmin = createClient(
-  SUPABASE_URL || '',
-  SUPABASE_SERVICE_KEY || ''
-)
+// Ленивая инициализация: клиент создается только при входящем запросе, а не при сборке
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !key) {
+    throw new Error('Supabase URL or Service Role Key is missing')
+  }
+
+  return createClient(url, key)
+}
 
 async function sendTelegramMessage(chatId: number, text: string) {
   if (!BOT_TOKEN) return
@@ -38,11 +45,13 @@ export async function POST(req: NextRequest) {
     const userId = String(message.from?.id)
     const text = message.text.trim()
 
-    // Защита: отвечаем только владельцу
+    // Защита: проверяем ID отправителя
     if (ALLOWED_USER_ID && userId !== ALLOWED_USER_ID) {
       await sendTelegramMessage(chatId, '⛔ Доступ запрещен.')
       return NextResponse.json({ ok: true })
     }
+
+    const supabaseAdmin = getSupabaseAdmin()
 
     // Обработка базовых команд
     if (text === '/start') {
