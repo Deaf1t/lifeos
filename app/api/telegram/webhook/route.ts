@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Принудительно отключаем статическую генерацию для API-роута
-export const dynamic = 'force-dynamic'
-
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const ALLOWED_USER_ID = process.env.TELEGRAM_ALLOWED_USER_ID
 
-// Ленивая инициализация: клиент создается только при входящем запросе, а не при сборке
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
